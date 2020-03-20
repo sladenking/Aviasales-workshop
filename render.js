@@ -11,20 +11,24 @@ const formSearch = document.querySelector('.form-search'),
   dropdownCitiesFrom = document.querySelector('.dropdown__cities-from'),
   inputCitiesTo = document.querySelector('.input__cities-to'),
   dropdownCitiesTo = document.querySelector('.dropdown__cities-to'),
-  inputDateDepart = document.querySelector('.input__date-depart');
+  inputDateDepart = document.querySelector('.input__date-depart'),
+  cheapestTicket = document.querySelector('#cheapest-ticket'),
+  otherCheapTickets = document.querySelector('#other-cheap-tickets'),
+  body = document.querySelector('body');
 
 //data
 
 const citiesApi = 'http://api.travelpayouts.com/data/ru/cities.json',
   proxy = 'https://cors-anywhere.herokuapp.com/',
   API_KEY = '618fac694efd7b4171e869dbac97d42d',
-  calendar = 'http://min-prices.aviasales.ru/calendar_preload';
+  calendar = 'http://min-prices.aviasales.ru/calendar_preload',
+  MAX_COUNT = 5;
 
 let cities = [];
 
 //functions
 
-const getData = (url, callback) => {
+const getData = (url, callback, reject = console.error) => {
   const request = new XMLHttpRequest();
 
   request.open('GET', url);
@@ -35,7 +39,7 @@ const getData = (url, callback) => {
     if (request.status === 200) {
       callback(request.response);
     } else {
-      console.error(request.status)
+      reject(request.status)
     }
   });
 
@@ -75,14 +79,115 @@ const selectCity = (event, input, list) => {
   }
 }
 
-renderCheapDay = (cheapTickets) => {
-  console.log(cheapTickets);
+const getNameCity = code => {
+  const objCity = cities.find(item => item.code === code);
+  return objCity.name;
+}
 
+const getChanges = num => {
+  if (num) {
+    return num === 1
+      ? 'С одной пересадкой'
+      : 'С двумя пересадками';
+  } else {
+    return 'Без пересадок';
+  }
+};
+
+const getDate = date => {
+  return new Date(date).toLocaleString('ru', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+const getLinkAviasales = (data) => {
+  let link = 'https://www.aviasales.ru/search/';
+
+  link += data.origin;
+
+  const date = new Date(data.depart_date);
+
+  const day = date.getDay();
+
+  link += day < 10
+    ? '0' + day
+    : day;
+
+  const month = date.getMonth() + 1;
+
+  link += month < 10
+    ? '0' + month
+    : month;
+
+  link += data.destination;
+
+  link += '1';
+
+  return link;
+};
+
+const createCard = data => {
+  const ticket = document.createElement('article');
+  ticket
+    .classList
+    .add('ticket');
+
+  let deep = '';
+
+  if (data) {
+    deep = `
+    <h3 class="agent">${data.gate}</h3>
+    <div class="ticket__wrapper">
+      <div class="left-side">
+        <a href="${getLinkAviasales(data)}" target="_blank"" class="button button__buy">Купить
+          за ${data.value}₽</a>
+      </div>
+      <div class="right-side">
+        <div class="block-left">
+          <div class="city__from">Вылет из города
+            <span class="city__name">${getNameCity(data.origin)}</span>
+          </div>
+          <div class="city__to">Город назначения:
+            <span class="city__name">${getNameCity(data.destination)}</span>
+          </div>
+        </div>
+
+        <div class="block-right">
+          <div class="changes">${getChanges(data.number_of_changes)}</div>
+                   
+          <div class="date">Дата: ${getDate(data.depart_date)}</div>
+        </div>
+      </div>
+    </div>
+    `;
+  } else {
+    deep = '<h3>К сожалению, на текущую дату билетов не найдено!</h3>'
+  }
+
+  ticket.insertAdjacentHTML('afterbegin', deep)
+
+  return ticket;
+};
+
+renderCheapDay = (cheapTickets) => {
+  cheapestTicket.innerHTML = '<h2>Самый дешевый билет на выбранную дату</h2>';
+
+  const ticket = createCard(cheapTickets[0]);
+
+  cheapestTicket.append(ticket);
 };
 
 renderCheapYear = (cheapTickets) => {
-  console.log(cheapTickets);
+  otherCheapTickets.innerHTML = '<h2>Самые дешевые билеты на другие даты</h2>';
 
+  cheapTickets.sort((a, b) => a.value - b.value);
+
+  for (let i = 0; i < cheapTickets.length && i < MAX_COUNT; i++) {
+    const ticket = createCard(cheapTickets[i]);
+    otherCheapTickets.append(ticket);
+  }
 };
 
 const renderCheap = (data, date) => {
@@ -116,6 +221,8 @@ dropdownCitiesTo.addEventListener('click', event => {
   selectCity(event, inputCitiesTo, dropdownCitiesTo);
 });
 
+body.addEventListener('click', event => {});
+
 formSearch.addEventListener('submit', event => {
   event.preventDefault();
 
@@ -128,18 +235,34 @@ formSearch.addEventListener('submit', event => {
       .code,
     when: inputDateDepart.value
   }
+  if (formData.from && formData.to) {
+    const requestData = `?depart_date=${formData.when}&origin=${formData.from}&destination=${formData.to}&oneway=true&token=${API_KEY}`;
 
-  const requestData = '?depart_date=' + formData.when + '&origin=' + formData.from + '&destination=' + formData.to + '&oneway=true&token=' + API_KEY;
-
-  getData(calendar + requestData, (response) => {
-    renderCheap(response, formData.when);
-  });
+    getData(calendar + requestData, (response) => {
+      renderCheap(response, formData.when);
+    }, (error) => {
+      alert('На это направление отсутствуют рейсы');
+      console.error('Ошибка ', error);
+    });
+  } else {
+    alert('Введите корректное название города');
+  };
 });
 
 //call functions
 
 getData(proxy + citiesApi, data => {
-  cities = JSON.parse(data)
+  cities = JSON.parse(data);
+
+  cities.sort((a, b) => {
+    if (a.name > b.name) {
+      return 1;
+    }
+    if (a.name < b.name) {
+      return -1;
+    }
+    return 0;
+  });
 });
 
 // getData(proxy + calendar + '?depart_date=2020-05-25', data => {   cities =
