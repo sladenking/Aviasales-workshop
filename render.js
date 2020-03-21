@@ -15,7 +15,6 @@ const formSearch = document.querySelector('.form-search'),
   cheapestTicket = document.querySelector('#cheapest-ticket'),
   otherCheapTickets = document.querySelector('#other-cheap-tickets'),
   body = document.querySelector('body');
-
 //data
 
 const citiesApi = 'http://api.travelpayouts.com/data/ru/cities.json',
@@ -221,7 +220,10 @@ dropdownCitiesTo.addEventListener('click', event => {
   selectCity(event, inputCitiesTo, dropdownCitiesTo);
 });
 
-body.addEventListener('click', event => {});
+body.addEventListener('click', () => {
+  dropdownCitiesFrom.innerHTML = '';
+  dropdownCitiesTo.innerHTML = '';
+});
 
 formSearch.addEventListener('submit', event => {
   event.preventDefault();
@@ -241,11 +243,12 @@ formSearch.addEventListener('submit', event => {
     getData(calendar + requestData, (response) => {
       renderCheap(response, formData.when);
     }, (error) => {
-      alert('На это направление отсутствуют рейсы');
+      cheapestTicket.innerHTML = '<h2>К сожалению, на данное направление отсутствуют рейсы</h2>';
+      otherCheapTickets.innerHTML = '';
       console.error('Ошибка ', error);
     });
   } else {
-    alert('Введите корректное название города');
+    cheapestTicket.innerHTML = '<h3>Введите корректное название города</h3>';
   };
 });
 

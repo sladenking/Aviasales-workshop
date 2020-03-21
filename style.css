@@ -248,7 +248,7 @@ input {
 
 .ticket {
     width: 100%;
-    max-width: 730px;
+    max-width: 850px;
     margin: 30px auto;
     border-radius: 5px;
     -webkit-box-shadow: 0 1px 5px rgba(0, 0, 0, .15);
