@@ -202,6 +202,19 @@ const renderCheap = (data, date) => {
   renderCheapYear(cheapTicketsYear);
 }
 
+const customAlert = (message) => {
+  removeAlert();
+  let messageWrap = `<section id="alert" style="text-align: center; color: #f57c00">${message}</section>`;
+  formSearch.insertAdjacentHTML('afterbegin', messageWrap);
+}
+
+const removeAlert = () => {
+  alert = document.getElementById('alert');
+  cheapestTicket.textContent = '';
+  otherCheapTickets.textContent = '';
+  if (alert) alert.remove();
+}
+
 //handlers
 
 inputCitiesFrom.addEventListener('input', () => {
@@ -221,24 +234,30 @@ dropdownCitiesTo.addEventListener('click', event => {
 });
 
 body.addEventListener('click', () => {
-  dropdownCitiesFrom.innerHTML = '';
-  dropdownCitiesTo.innerHTML = '';
+  dropdownCitiesFrom.textContent = '';
+  dropdownCitiesTo.textContent = '';
 });
 
 formSearch.addEventListener('submit', event => {
   event.preventDefault();
+  customAlert('');
+
+  const cityFrom = cities.find((item) => {
+    return inputCitiesFrom.value === item.name;
+  });
+
+  const cityTo = cities.find((item) => {
+    return inputCitiesTo.value === item.name;
+  });
 
   const formData = {
-    from: cities
-      .find(item => inputCitiesFrom.value === item.name)
-      .code,
-    to: cities
-      .find(item => inputCitiesTo.value === item.name)
-      .code,
+    from: cityFrom,
+    to: cityTo,
     when: inputDateDepart.value
   }
+
   if (formData.from && formData.to) {
-    const requestData = `?depart_date=${formData.when}&origin=${formData.from}&destination=${formData.to}&oneway=true&token=${API_KEY}`;
+    const requestData = `?depart_date=${formData.when}&origin=${formData.from.code}&destination=${formData.to.code}&oneway=true&token=${API_KEY}`;
 
     getData(calendar + requestData, (response) => {
       renderCheap(response, formData.when);
@@ -248,7 +267,7 @@ formSearch.addEventListener('submit', event => {
       console.error('Ошибка ', error);
     });
   } else {
-    cheapestTicket.innerHTML = '<h3>Введите корректное название города</h3>';
+    customAlert('Введите корректное название города');
   };
 });
 
